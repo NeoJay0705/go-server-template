@@ -1,0 +1,29 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: filebeat-config
+data:
+  filebeat.yml: |
+    filebeat.inputs:
+      - type: log
+        paths:
+          - /var/log/app/*.log
+        json.keys_under_root: true
+        json.add_error_key: true
+        fields_under_root: true
+        tags: ["json"]          # for searching
+    output.logstash:
+      hosts: ["${LOGSTASH_HOST}:5044"]
+    processors:
+      - add_fields: 
+          target: ""             # put the fields on the root, or it put on {"target": {"field": value}}
+          fields:
+            # host: "${HOSTNAME}"  # Set the "host" field directly
+            app_name: "go-server-template"
+            app_id: "go-server-template-123"
+      - rename:
+          fields:
+            - from: "host"
+              to: "host2"
+          ignore_missing: false
+          fail_on_error: true

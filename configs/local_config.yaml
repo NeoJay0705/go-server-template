@@ -1,0 +1,7 @@
+USERNAME: postgres
+PASSWORD: mysecretpassword
+SERVER: 127.0.0.1
+PORT: 5432
+DATABASE: testdb
+
+TEST: test_config

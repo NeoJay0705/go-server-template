@@ -1,0 +1,102 @@
+# Copyright 2021 Google LLC
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+#      http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+
+# [START gke_manifests_helloweb_deployment_deployment_helloweb]
+# [START container_helloapp_deployment]
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: go-server-template-deployment
+  labels:
+    app: go-server-template
+spec:
+  # replicas: 1
+  # strategy:
+  # type: RollingUpdate
+  # rollingUpdate:
+  # maxSurge: 1
+  # maxUnavailable: 1
+  selector:
+    matchLabels:
+      app: go-server-template
+      tier: web
+  template:
+    metadata:
+      labels:
+        app: go-server-template
+        tier: web
+    spec:
+      # initContainers:
+      #   - name: init-permissions
+      #     image: busybox
+      #     command:
+      #       - "sh"
+      #       - "-c"
+      #       - |
+      #         mkdir -p /var/log/app && chmod -R 755 /var/log/app
+      #     volumeMounts:
+      #       - name: log-volume
+      #         mountPath: /var/log/app
+      containers:
+        - name: sgo-server-template
+          image: gcr.io/exercise-cluster/go-server-template:v1
+          imagePullPolicy: Always
+          # envFrom:
+          #   - configMapRef:
+          #       name: my-config   # Load all ConfigMap keys as environment variables
+          #   - secretRef:
+          #       name: my-secret   # Load all Secret keys as environment variables
+          env:
+            - name: env
+              value: "dev"
+          ports:
+            - containerPort: 8888
+          resources:
+            limits:
+              memory: "512Mi"
+              cpu: "500m"
+          volumeMounts:
+            - name: log-volume
+              mountPath: /var/log/app
+        - name: filebeat
+          image: docker.elastic.co/beats/filebeat:7.17.1
+          args: ["-e", "-c", "/etc/filebeat/filebeat.yml"]
+          env:
+            - name: LOGSTASH_HOST
+              value: "logstash.elk.svc.cluster.local" # Correctly name it LOGSTASH_HOST
+          resources:
+            limits:
+              memory: "512Mi"
+              cpu: "500m"
+          securityContext:
+            runAsUser: 0 # Run as root
+            runAsGroup: 0 # Belongs to the root group
+          volumeMounts:
+            - name: filebeat-config
+              mountPath: /etc/filebeat
+              readOnly: true
+            - name: log-volume
+              mountPath: /var/log/app
+      volumes:
+        - name: filebeat-config
+          configMap:
+            name: filebeat-config
+        - name: log-volume
+          emptyDir: {}
+# [END container_helloapp_deployment]
+# [END gke_manifests_helloweb_deployment_deployment_helloweb]
+
+# gcloud auth configure-docker --quiet gcr.io
+# docker tag go-server-template:v1 gcr.io/exercise-cluster/go-server-template:v1
+# docker push gcr.io/exercise-cluster/go-server-template:v1
